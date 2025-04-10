@@ -39,9 +39,20 @@ func (r *inferenceRepo) UpdateHasFeedback(ctx context.Context, inferenceID strin
         SET has_feedback = $1
         WHERE id = $2
     `
-    _, err := r.db.ExecContext(ctx, query, hasFeedback, inferenceID)
-    return err
+    res, err := r.db.ExecContext(ctx, query, hasFeedback, inferenceID)
+    if err != nil {
+        return err
+    }
+    rows, err := res.RowsAffected()
+    if err != nil {
+        return err
+    }
+    if rows == 0 {
+        return fmt.Errorf("no rows updated for inference ID: %s", inferenceID)
+    }
+    return nil
 }
+
 
 func (r *inferenceRepo) GetInferenceByID(ctx context.Context, inferenceID string) (*models.Inference, error) {
     query := `

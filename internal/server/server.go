@@ -28,12 +28,12 @@ func NewServer(db *sql.DB) *Server {
         FeedbackRepo:  fbRepo,
         Router:        mux.NewRouter(),
     }
-    s.routes()
+    s.Routes()
     return s
 }
 
-// routes sets up our HTTP endpoints
-func (s *Server) routes() {
+// Routes sets up our HTTP endpoints
+func (s *Server) Routes() {
     // Health check
     s.Router.HandleFunc("/health", s.handleHealth).Methods("GET")
 
