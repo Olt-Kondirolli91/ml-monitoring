@@ -3,12 +3,14 @@ package main
 import (
     "context"
     "log"
+    "os"
+    "os/signal"
+    "syscall"
+    "time"
 
-    "github.com/google/uuid"
     "github.com/Olt-Kondirolli91/ml-monitoring/internal/config"
     "github.com/Olt-Kondirolli91/ml-monitoring/internal/db"
-    "github.com/Olt-Kondirolli91/ml-monitoring/internal/models"
-    "github.com/Olt-Kondirolli91/ml-monitoring/internal/repository"
+    "github.com/Olt-Kondirolli91/ml-monitoring/internal/server"
 )
 
 func main() {
@@ -30,57 +32,21 @@ func main() {
     }
     defer database.Close()
 
-    // 4. Create repositories
-    infRepo := repository.NewInferenceRepository(database)
-    fbRepo := repository.NewFeedbackRepository(database)
+    // 4. Create and start HTTP server
+    srv := server.NewServer(database)
+    go srv.Start("8080") // run in goroutine
 
-    // 5. Insert a sample inference (for demonstration)
-    infID := uuid.New().String() // generate a random ID
-    inf := models.Inference{
-        ID:           infID,
-        ModelName:    "example_model",
-        ModelVersion: "1.0.0",
-        InputData:    `{"input":"some input data"}`,
-        OutputData:   `{"output":"some output data"}`,
-        HasFeedback:  false,
-    }
+    // 5. Shutdown handling
+    quit := make(chan os.Signal, 1)
+    signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+    <-quit
+    log.Println("Received shutdown signal")
 
-    ctx := context.Background()
+    ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+    defer cancel()
 
-    err = infRepo.InsertInference(ctx, inf)
-    if err != nil {
-        log.Fatalf("Failed to insert inference: %v", err)
+    if err := srv.Shutdown(ctx); err != nil {
+        log.Printf("Server Shutdown Failed:%+v", err)
     }
-    log.Printf("Inserted inference with ID: %s\n", infID)
-
-    // 6. Insert sample feedback
-    fb := models.Feedback{
-        ID:          uuid.New().String(),
-        InferenceID: infID,
-        FeedbackData: `{"corrected_output":"the correct output"}`,
-    }
-    err = fbRepo.InsertFeedback(ctx, fb)
-    if err != nil {
-        log.Fatalf("Failed to insert feedback: %v", err)
-    }
-    log.Printf("Inserted feedback for inference ID: %s\n", infID)
-
-    // 7. Update the inference has_feedback to true
-    err = infRepo.UpdateHasFeedback(ctx, infID, true)
-    if err != nil {
-        log.Fatalf("Failed to update inference has_feedback: %v", err)
-    }
-
-    // 8. Fetch and print the inference + feedback
-    insertedInf, err := infRepo.GetInferenceByID(ctx, infID)
-    if err != nil {
-        log.Fatalf("Failed to get inference: %v", err)
-    }
-    log.Printf("Fetched Inference: %+v\n", insertedInf)
-
-    allFeedback, err := fbRepo.GetFeedbackByInferenceID(ctx, infID)
-    if err != nil {
-        log.Fatalf("Failed to get feedback: %v", err)
-    }
-    log.Printf("Feedback for Inference ID %s: %+v\n", infID, allFeedback)
+    log.Println("Server exited properly")
 }
