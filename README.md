@@ -1,4 +1,3 @@
-```markdown
 # ML Monitoring
 
 ## Table of Contents
