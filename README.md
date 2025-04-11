@@ -32,17 +32,6 @@ git clone https://github.com/Olt-Kondirolli91/ml-monitoring.git
 cd ml-monitoring
 ```
 
-### Clean Slate (Optional)
-
-If you have run this before and want to pick up new seed data, remove the old Postgres volume:
-
-```bash
-docker-compose down
-docker volume rm ml-monitoring_db_data
-```
-
-> This ensures Postgres re‑initializes and runs your migrations & seed inserts.
-
 ### Run with Docker Compose
 
 ```bash
@@ -62,24 +51,12 @@ ml_monitoring_app  | Starting HTTP server on port 8080
 
 ---
 
-## Database & Seed Data
+## Database 
 
-Migrations live in `migrations/20250408001_init_schema.up.sql`. They:
+Migrations live in the `migrations/` folder. They:
 
 1. Create `inferences` and `feedback` tables  
 2. Define indexes and FK constraints  
-3. **Seed** two inferences and one feedback row:
-
-| Inference ID                             | model_name | model_version | has_feedback |
-|------------------------------------------|------------|---------------|--------------|
-| `c3c4c350-7d8a-4b02-816c-245ced77ff01`   | seed_model | 1.0.0         | false        |
-| `11111111-2222-3333-4444-555555555555`   | seed_model | 1.0.0         | true         |
-
-One feedback row:
-
-| Feedback ID                              | Inference ID                          |
-|------------------------------------------|---------------------------------------|
-| `66666666-7777-8888-9999-000000000000`   | `11111111-2222-3333-4444-555555555555`|
 
 To inspect:
 
@@ -214,36 +191,38 @@ go test ./... -v
 ## Project Structure
 
 ```
-ml-monitoring/
-├── cmd/
-│   └── main.go               # Entry point: loads config, runs migrations, starts server
-├── internal/
-│   ├── config/
-│   │   └── config.go         # Env var loader
-│   ├── db/
-│   │   ├── db.go             # DB connect
-│   │   └── migrations.go     # golang-migrate runner
-│   ├── models/
-│   │   ├── inference.go      # Inference struct
-│   │   └── feedback.go       # Feedback struct
-│   ├── repository/
-│   │   ├── inference_repo.go # SQL CRUD for inferences
-│   │   └── feedback_repo.go  # SQL CRUD for feedback
-│   └── server/
-│       ├── server.go         # HTTP router & startup
-│       └── handlers.go       # HTTP handler implementations
-├── migrations/
-│   ├── 20250408001_init_schema.up.sql   # Schema + seed data
-│   └── 20250408001_init_schema.down.sql # Drop tables
-├── tests/                     # Unit tests (sqlmock & in‑memory mocks)
-│   ├── repo_inference_test.go
-│   ├── repo_feedback_test.go
-│   ├── mock_repository.go
-│   └── server_test.go
-├── Dockerfile                 # Multi‑stage build for Go app
-├── docker-compose.yml         # Postgres + app services
-├── go.mod & go.sum            # Go module
-└── README.md                  # This file
+└── ml-monitoring
+    ├── cmd
+    │   └── main.go                 # Entry point: loads config, runs migrations, starts server
+    ├── docker-compose.yml          # Postgres + app services
+    ├── Dockerfile                  # Multi‑stage build for Go app
+    ├── go.mod                      # Go module
+    ├── go.sum                      # Go module
+    ├── internal
+    │   ├── config
+    │   │   └── config.go           # Env var loader
+    │   ├── db
+    │   │   ├── db.go               # DB connect
+    │   │   └── migrations.go       # golang-migrate runner
+    │   ├── models
+    │   │   ├── feedback.go         # Feedback struct
+    │   │   └── inference.go        # Inference struct
+    │   ├── repository
+    │   │   ├── feedback_repo.go    # SQL CRUD for feedback
+    │   │   └── inference_repo.go   # SQL CRUD for inferences
+    │   └── server
+    │       ├── handlers.go         # HTTP router & startup
+    │       └── server.go           # HTTP handler implementations
+    ├── migrations
+    │   ├── 20250408001_create_inferences_table.down.sql # Drop inferences table
+    │   ├── 20250408001_create_inferences_table.up.sql   # Schema for inferences table
+    │   ├── 20250408002_create_feedback_table.down.sql   # Drop feedback table
+    │   └── 20250408002_create_feedback_table.up.sql     # Schema for feedback table
+    ├── README.md
+    └── tests                       # Unit tests (sqlmock & in‑memory mocks)
+        ├── mock_repository.go
+        ├── repo_feedback_test.go
+        ├── repo_inference_test.go
+        └── server_test.go
 ```
-
 ---
